@@ -1,0 +1,24 @@
+spring:
+  redis:
+    host: 127.0.0.1
+    port: 6379
+  jpa:
+    show-sql: true
+    properties:
+      format_sql: true
+      dialect: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: validate
+  datasource:
+     url: jdbc:mysql://localhost:3306/account?useSSL=false&useUnicode=true&allowPublicKeyRetrieval=true
+     driver-class-name: com.mysql.cj.jdbc.Driver
+     username: root
+     password: 8837170
+
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+
+  jwt:
+    secret: b8638245f1f1d4eeb39bb7eed09cfb3b762c1f3183de48b0b0d5e4a7392d9538ad3de38ad94539feffadf4250baa6ae6cd4b4826d3c00d591a9cbd5a2a019997
+
