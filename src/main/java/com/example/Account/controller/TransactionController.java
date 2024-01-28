@@ -72,7 +72,7 @@ public class TransactionController {
         }catch (Exception e){
             log.info("에러 발생..");
         }finally {
-            if (lock.isHeldByCurrentThread() && isLocked) { // 원래 isLocked
+            if (lock.isHeldByCurrentThread() && isLocked) { 
                 log.info(Thread.currentThread() + " useBalance Lock 반납");
                 lock.unlock();
             }
