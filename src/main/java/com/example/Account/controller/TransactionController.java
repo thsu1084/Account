@@ -72,7 +72,7 @@ public class TransactionController {
         }catch (Exception e){
             log.info("에러 발생..");
         }finally {
-            if (lock.isHeldByCurrentThread() && !isLocked) { // 원래 isLocked
+            if (lock.isHeldByCurrentThread() && isLocked) { // 원래 isLocked
                 log.info(Thread.currentThread() + " useBalance Lock 반납");
                 lock.unlock();
             }
@@ -84,17 +84,7 @@ public class TransactionController {
             return transactionDto;
         }
 
-        /*
-           TransactionDto transactionDto = transactionServiceImpl.useBalance(id,accountNumber,amount);
-
-           if (transactionDto.getTransactionResultType().equals(FAIL)){
-               throw new ApiException(ErrorCode.BAD_REQUEST);
-           }else{
-               return transactionDto;
-           }
-
-
-         */
+       
 
     }
 
@@ -133,7 +123,7 @@ public class TransactionController {
         }catch (Exception e){
             log.info("에러 발생..");
         }finally {
-            if (lock.isHeldByCurrentThread() && !isLocked) { // 원래 isLocked
+            if (lock.isHeldByCurrentThread() && isLocked) { 
                 log.info(Thread.currentThread() + " cancelBalance Lock 반납");
                 lock.unlock();
             }
@@ -141,7 +131,6 @@ public class TransactionController {
 
         return transactionDto;
 
-        // return  transactionServiceImpl.cancelBalance(transactionId,accountNumber,amount); 
     }
 
     @GetMapping("/Transaction")
