@@ -82,7 +82,7 @@ public class JwtTokenProvider {
         Claims claims = Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody();
         List<String> roles = claims.get("roles",List.class);
         String information = roles.get(0);
-        LOGGER.info("[getUsername] 토큰 기반 회원 구별 정보 추출 완료, information : {}", information);
+        LOGGER.info("[getUserRole] 토큰 기반 회원 구별 정보 추출 완료, information : {}", information);
         return information;
     }
 
@@ -90,7 +90,7 @@ public class JwtTokenProvider {
         LOGGER.info("[getUsername] 토큰 기반 회원 구별 정보 추출");
         String info = Jwts.parser().setSigningKey(secretKey).parseClaimsJws(token).getBody()
                 .getSubject();
-
+        LOGGER.info("[getUsername] 토큰 기반 회원 구별 정보 추출 완료, information : {}", info);
         return info;
     }
 
