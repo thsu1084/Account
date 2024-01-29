@@ -31,6 +31,11 @@ public class SignServiceImpl implements SignService {
     @Override
     public SignUpResultDto signUp(String id, String password, String name,String role) {
 
+        if( userRepository.findByUid(id).isPresent() ){
+            throw new ApiException(ErrorCode.UID_ALREADY_EXISTS);
+        }
+
+        
         User savedUser ;
 
         if (role.equalsIgnoreCase("user")) {
