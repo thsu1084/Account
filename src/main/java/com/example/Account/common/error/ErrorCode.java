@@ -42,7 +42,11 @@ public enum ErrorCode implements ErrorCodeIfs {
 
     AMOUNT_DOES_NOT_MATCH(HttpStatus.NO_CONTENT.value(), 526,"금액이 일치하지 않습니다"),
 
-    TRANSACTION_IS_OLDER_THAN_1_YEAR(HttpStatus.NO_CONTENT.value(), 527,"1년이 지난 거래 입니다")
+    TRANSACTION_IS_OLDER_THAN_1_YEAR(HttpStatus.NO_CONTENT.value(), 527,"1년이 지난 거래 입니다"),
+
+    UID_ALREADY_EXISTS(HttpStatus.NO_CONTENT.value(), 528,"이미 존재하는 아이디 입니다"),
+
+    PASSWORD_ALREADY_EXISTS(HttpStatus.NO_CONTENT.value(), 529,"이미 존재하는 비밀번호 입니다")
 
     ;
 
