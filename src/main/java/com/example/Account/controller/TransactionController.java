@@ -41,7 +41,6 @@ public class TransactionController {
     }
 
 
-    //@Transactional
     @PostMapping("/use")
     public TransactionDto useBalance(
         @RequestHeader(name = "Authorization") String token,
@@ -89,7 +88,6 @@ public class TransactionController {
 
 
 
-    //@Transactional
     @PostMapping("/cancel")
     public TransactionDto cancelBalance(
         @RequestHeader(name = "Authorization") String token,
