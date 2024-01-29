@@ -18,6 +18,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,12 +40,11 @@ public class TransactionController {
         this.redissonClient = redissonClient;
     }
 
-    @ApiImplicitParams({
-        @ApiImplicitParam(name = "X-AUTH-TOKEN", value = "로그인 성공 후 발급 받은 access_token", required = true, dataType = "String", paramType = "header")
-    })
-    @Transactional
+
+    //@Transactional
     @PostMapping("/use")
     public TransactionDto useBalance(
+        @RequestHeader(name = "Authorization") String token,
         @RequestParam Long id,
         @RequestParam String accountNumber,
         @RequestParam Long amount
@@ -64,7 +64,7 @@ public class TransactionController {
                 throw new ApiException(ErrorCode.SERVER_ERROR);
             }
 
-            transactionDto = transactionServiceImpl.useBalance(id,accountNumber,amount);
+            transactionDto = transactionServiceImpl.useBalance(token,id,accountNumber,amount);
 
             log.info(Thread.currentThread()+" 의 useBalance 로직 실행 완료");
 
@@ -72,7 +72,7 @@ public class TransactionController {
         }catch (Exception e){
             log.info("에러 발생..");
         }finally {
-            if (lock.isHeldByCurrentThread() && isLocked) { 
+            if (lock.isHeldByCurrentThread() && isLocked) {
                 log.info(Thread.currentThread() + " useBalance Lock 반납");
                 lock.unlock();
             }
@@ -84,17 +84,15 @@ public class TransactionController {
             return transactionDto;
         }
 
-       
 
     }
 
 
-    @ApiImplicitParams({
-        @ApiImplicitParam(name = "X-AUTH-TOKEN", value = "로그인 성공 후 발급 받은 access_token", required = true, dataType = "String", paramType = "header")
-    })
-    @Transactional
+
+    //@Transactional
     @PostMapping("/cancel")
     public TransactionDto cancelBalance(
+        @RequestHeader(name = "Authorization") String token,
         @RequestParam String transactionId,
         @RequestParam String accountNumber,
         @RequestParam Long amount
@@ -117,13 +115,13 @@ public class TransactionController {
                 throw new ApiException(ErrorCode.SERVER_ERROR);
             }
 
-            transactionDto = transactionServiceImpl.cancelBalance(transactionId,accountNumber,amount);
+            transactionDto = transactionServiceImpl.cancelBalance(token,transactionId,accountNumber,amount);
 
             log.info(Thread.currentThread()+" 의 cancelBalance로직 실행 완료");
         }catch (Exception e){
             log.info("에러 발생..");
         }finally {
-            if (lock.isHeldByCurrentThread() && isLocked) { 
+            if (lock.isHeldByCurrentThread() && isLocked) {
                 log.info(Thread.currentThread() + " cancelBalance Lock 반납");
                 lock.unlock();
             }
