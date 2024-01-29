@@ -58,18 +58,13 @@ public class TransactionServiceImpl implements TransactionService {
 
         if (account.getAccountStatus().equals(UNREGISTERED)){
 
-            return FailToTransaction(accountNumber,amount);
-
-            //throw new ApiException(ErrorCode.THE_ACCOUNT_IS_ALREADY_TERMINATED);
-
+            return FailToTransaction(accountNumber,amount);    
         }
 
         if (account.getBalance() < amount){
-
+            
             return FailToTransaction(accountNumber,amount);
-
-            //throw new ApiException(ErrorCode.INSUFFICIENT_BALANCE);
-
+        
         }
 
 
