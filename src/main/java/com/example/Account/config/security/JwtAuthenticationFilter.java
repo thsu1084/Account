@@ -35,11 +35,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.userRepository = userRepository;
     }
 
+    public static final String TOKEN_HEADER = "Authorization";
+    public static final String TOKEN_PREFIX = "Bearer "; 
+    
     @Override
     protected void doFilterInternal(HttpServletRequest servletRequest,
                                     HttpServletResponse servletResponse,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String token = jwtTokenProvider.resolveToken(servletRequest);
+       
+        String token = resolveTokenFromRequest(servletRequest);
         LOGGER.info("[doFilterInternal] token 값 추출 완료. token : {}", token);
 
 
@@ -56,5 +60,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         filterChain.doFilter(servletRequest, servletResponse);
 
+    }
+
+
+    private String resolveTokenFromRequest(HttpServletRequest request) {
+        String token = request.getHeader(TOKEN_HEADER);
+
+        if (token != null && token.startsWith(TOKEN_PREFIX)) {
+            return token.substring(TOKEN_PREFIX.length());
+        }
+
+        return null;
     }
 }
