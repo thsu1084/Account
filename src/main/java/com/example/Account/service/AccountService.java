@@ -9,9 +9,9 @@ import java.util.List;
 
 public interface AccountService {
 
-    CreateAccountDto createAccount(Long id , Long initialBalance);
+    CreateAccountDto createAccount(String token,Long id , Long initialBalance);
 
     List<AccountDto> getAccount(Long id);
 
-    DeleteAccountDto deleteAccount(Long id, String accountNumber);
+    DeleteAccountDto deleteAccount(String token,Long id, String accountNumber);
 }
