@@ -1,112 +1,116 @@
 package com.example.Account.controller;
 
 
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import com.example.Account.common.enums.TransactionResultType;
-import com.example.Account.common.exception.ApiException;
 import com.example.Account.model.TransactionDto;
-import com.example.Account.service.TransactionService;
 import com.example.Account.service.impl.TransactionServiceImpl;
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.concurrent.TimeUnit;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(TransactionController.class)
+@WithMockUser
 public class TransactionControllerTest {
 
-    @InjectMocks
-    private TransactionController transactionController;
+    @Autowired
+    private MockMvc mockMvc;
 
-    @Mock
-    private RedissonClient redissonClient;
-
-    @Mock
+    @MockBean
     private TransactionServiceImpl transactionServiceImpl;
 
-    @Mock
-    private TransactionService transactionService;
-
-    @Mock
-    private RLock lock;
+    @MockBean
+    private RedissonClient redissonClient;
+    @MockBean
+    private RLock lock ;
 
     @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.initMocks(this);
-        transactionController = new TransactionController(transactionServiceImpl ,redissonClient);
-    }
+    void setUp() throws InterruptedException {
 
+        lock = mock(RLock.class);
+
+        when(redissonClient.getLock(anyString())).thenReturn(lock);
+
+        when(lock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
+        when(lock.isHeldByCurrentThread()).thenReturn(true);
+    }
 
     @Test
-    public void successUseBalance() throws InterruptedException {
+    public void successUseBalance() throws Exception {
 
+        String token = "Bearer your_mocked_token";
         Long id = 1L;
-        String accountNumber = "123";
-        Long amount = 100L;
-        TransactionDto expectedDto = mock(TransactionDto.class);
+        String accountNumber = "1234567890";
+        Long amount = 500L;
+        TransactionDto expectedDto = new TransactionDto();
+        expectedDto.setAccountNumber(accountNumber);
+        expectedDto.setTransactionResultType(TransactionResultType.SUCCESS);
+        expectedDto.setAmount(amount);
+        expectedDto.setTransactedAt(LocalDateTime.now());
 
-        expectedDto = TransactionDto.builder()
-            .transactionResultType(TransactionResultType.SUCCESS)
-            .build() ;
+        given(transactionServiceImpl.useBalance(eq(token), eq(id), eq(accountNumber), eq(amount)))
+            .willReturn(expectedDto);
 
-        when(redissonClient.getLock(accountNumber)).thenReturn(lock);
-        when(lock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
-        when(transactionServiceImpl.useBalance(id, accountNumber, amount)).thenReturn(expectedDto);
+        mockMvc.perform(post("/Transaction-api/use")
+                .with(csrf())
+                .header("Authorization", token)
+                .param("id", id.toString())
+                .param("accountNumber", accountNumber)
+                .param("amount", amount.toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accountNumber").value(expectedDto.getAccountNumber()))
+            .andExpect(jsonPath("$.transactionResultType").value(expectedDto.getTransactionResultType().toString()))
+            .andExpect(jsonPath("$.amount").value(expectedDto.getAmount()))
+            .andExpect(jsonPath("$.transactedAt").isNotEmpty());
 
-        TransactionDto result = transactionController.useBalance(id, accountNumber, amount);
-
-        assertNotNull(result);
-        assertEquals(TransactionResultType.SUCCESS, result.getTransactionResultType());
+        verify(transactionServiceImpl, times(1)).useBalance(eq(token), eq(id), eq(accountNumber), eq(amount));
     }
-
-
 
     @Test
-    public void successCancelBalance() throws Exception {
+    public void successCancelBalance() throws Exception{
 
+        String token = "Bearer your_mocked_token";
         Long id = 1L;
-        String accountNumber = "123";
-        Long amount = 100L;
-        String transactionId = "456";
+        String transactionId = "aabbcc";
+        String accountNumber = "1234567890";
+        Long amount = 500L;
+        TransactionDto expectedDto = new TransactionDto();
+        expectedDto.setAccountNumber(accountNumber);
+        expectedDto.setTransactionResultType(TransactionResultType.SUCCESS);
+        expectedDto.setAmount(amount);
+        expectedDto.setTransactedAt(LocalDateTime.now());
 
-        TransactionDto expectedDto = mock(TransactionDto.class);
+        given(transactionServiceImpl.cancelBalance(eq(token), eq(transactionId), eq(accountNumber), eq(amount)))
+            .willReturn(expectedDto);
 
-        expectedDto = TransactionDto.builder()
-            .transactedAt(LocalDateTime.now())
-            .transactionId(transactionId)
-            .amount(amount)
-            .accountNumber(accountNumber)
-            .transactionResultType(TransactionResultType.SUCCESS)
-            .build() ;
+        mockMvc.perform(post("/Transaction-api/cancel")
+                .with(csrf())
+                .header("Authorization", token)
+                .param("transactionId", transactionId)
+                .param("accountNumber", accountNumber)
+                .param("amount", amount.toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accountNumber").value(expectedDto.getAccountNumber()))
+            .andExpect(jsonPath("$.transactionResultType").value(expectedDto.getTransactionResultType().toString()))
+            .andExpect(jsonPath("$.amount").value(expectedDto.getAmount()))
+            .andExpect(jsonPath("$.transactedAt").isNotEmpty());
 
-        when(redissonClient.getLock(accountNumber)).thenReturn(lock);
-        when(lock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
-        when(transactionServiceImpl.cancelBalance(transactionId, accountNumber, amount)).thenReturn(expectedDto);
-
-        TransactionDto result = transactionController.cancelBalance(transactionId, accountNumber, amount);
-
-        assertNotNull(result);
-
+        verify(transactionServiceImpl, times(1))
+            .cancelBalance(eq(token), eq(transactionId), eq(accountNumber), eq(amount));
     }
-
 
 
 
