@@ -2,16 +2,19 @@ package com.example.Account.controller;
 
 
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+import com.example.Account.config.security.JwtTokenProvider;
+import com.example.Account.db.repository.AccountRepository;
+import com.example.Account.db.repository.UserRepository;
 import com.example.Account.model.AccountDto;
 import com.example.Account.model.CreateAccountDto;
 import com.example.Account.model.DeleteAccountDto;
@@ -20,26 +23,41 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-@WebMvcTest(AccountController.class)
-@WithMockUser
+@SpringBootTest
 public class AccountControllerTest {
 
-    @MockBean
+
+    private MockMvc mockMvc;
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    @InjectMocks
+    private AccountController accountController;
+
+    @Mock
     private AccountServiceImpl accountServiceImpl;
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private AccountRepository accountRepository;
+
+    @BeforeEach
+    public void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(accountController).build();
+    }
 
     @Test
     void successGetAllAccountById() throws Exception{
@@ -69,50 +87,48 @@ public class AccountControllerTest {
     @Test
     void successCreateAccount() throws Exception {
 
-        given(accountServiceImpl.createAccount(anyLong(),anyLong()))
-            .willReturn(CreateAccountDto.builder()
-                .id(1L)
-                .accountNumber("100000001")
-                .registeredAt(LocalDateTime.now())
-                .build());
 
+        String token = "your_mocked_token";
+        Long id = 1L;
+        Long initialBalance = 1000L;
+        CreateAccountDto expectedDto = new CreateAccountDto(1L, "1234567890", LocalDateTime.now());
+
+        when(accountServiceImpl.createAccount(eq(token), eq(id), eq(initialBalance)))
+                .thenReturn(expectedDto);
 
         mockMvc.perform(post("/user-api/create")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-            .param("id","2")
-            .param("initialBalance","1234")
-        )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(1L))
-            .andExpect(jsonPath("$.accountNumber").value("100000001"))
-            .andDo(print());
+                        .header("Authorization", token)
+                        .param("id", id.toString())
+                        .param("initialBalance", initialBalance.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(expectedDto.getId()))
+                .andExpect(jsonPath("$.accountNumber").value(expectedDto.getAccountNumber()))
+                .andExpect(jsonPath("$.registeredAt").isNotEmpty());
 
+        verify(accountServiceImpl, times(1)).createAccount(eq(token), eq(id), eq(initialBalance));
     }
 
 
     @Test
     void successDeleteAccount() throws Exception {
 
-        given(accountServiceImpl.deleteAccount(anyLong(),anyString()))
-            .willReturn(DeleteAccountDto.builder()
-                .id(1L)
-                .accountNumber("123456789")
-                .unregisteredAt(LocalDateTime.now())
-                .build());
+        String token = "your_mocked_token";
+        Long id = 1L;
+        String accountNumber = "1234567890";
+        DeleteAccountDto expectedDto = new DeleteAccountDto(1L, accountNumber, LocalDateTime.now());
 
+        when(accountServiceImpl.deleteAccount(eq(token), eq(id), eq(accountNumber)))
+                .thenReturn(expectedDto);
 
         mockMvc.perform(delete("/user-api/delete")
-                .with(csrf())
-                .contentType(MediaType.APPLICATION_JSON)
-                .param("id","2")
-                .param("accountNumber","1234")
-            )
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.id").value(1L))
-            .andExpect(jsonPath("$.accountNumber").value("123456789"))
-            .andDo(print());
+                        .header("Authorization", token)
+                        .param("id", id.toString())
+                        .param("accountNumber", accountNumber))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(expectedDto.getId()))
+                .andExpect(jsonPath("$.accountNumber").value(expectedDto.getAccountNumber()));
 
+        verify(accountServiceImpl, times(1)).deleteAccount(eq(token), eq(id), eq(accountNumber));
     }
 
 }
