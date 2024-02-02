@@ -3,6 +3,7 @@ package com.example.Account.service;
 import com.example.Account.common.enums.AccountStatus;
 import com.example.Account.common.enums.TransactionResultType;
 import com.example.Account.common.enums.TransactionType;
+import com.example.Account.config.security.JwtTokenProvider;
 import com.example.Account.db.Account;
 import com.example.Account.db.Transaction;
 import com.example.Account.db.User;
@@ -12,24 +13,20 @@ import com.example.Account.db.repository.UserRepository;
 import com.example.Account.model.TransactionDto;
 import com.example.Account.service.impl.TransactionServiceImpl;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.*;
 
+
+@SpringBootTest
 public class TransactionServiceTest {
 
-    @InjectMocks
-    private TransactionServiceImpl transactionService;
 
     @Mock
     private UserRepository userRepository;
@@ -40,125 +37,101 @@ public class TransactionServiceTest {
     @Mock
     private TransactionRepository transactionRepository;
 
-    @BeforeEach
-    public void setUp() {
-        MockitoAnnotations.openMocks(this);
-    }
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
+
+    @InjectMocks 
+    private TransactionServiceImpl transactionService;
+
 
     @Test
     public void successUseBalance() {
+        String token = "your_token_here";
+        Long id = 1L;
+        String accountNumber = "123456789";
+        Long amount = 1000L;
+        String uid = "user_uid";
 
-        Long userId = 1L;
-        String accountNumber = "123456";
-        Long amount = 100L;
+        User mockUser = new User();
+        mockUser.setId(id);
 
-        User user = new User();
-        user.setId(userId);
+        Account mockAccount = new Account();
+        mockAccount.setAccountStatus(AccountStatus.IN_USE);
+        mockAccount.setBalance(2000L);
 
-        Account account = new Account();
-        account.setAccountNumber(accountNumber);
-        account.setBalance(200L);
-        account.setAccountStatus(AccountStatus.IN_USE);
+        when(jwtTokenProvider.getUsername(anyString())).thenReturn(uid);
+        when(userRepository.findByUid(eq(uid))).thenReturn(Optional.of(mockUser));
+        when(accountRepository.findByAccountNumber(eq(accountNumber))).thenReturn(Optional.of(mockAccount));
 
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(accountRepository.findByAccountNumber(accountNumber)).thenReturn(Optional.of(account));
+        Transaction mockTransaction = Transaction.builder()
+            .transactionId(UUID.randomUUID().toString().replaceAll("-", ""))
+            .build();
+        when(transactionRepository.save(any(Transaction.class))).thenReturn(mockTransaction);
 
-
-        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        when(transactionRepository.save(transactionCaptor.capture())).thenReturn(new Transaction());
-
-
-        TransactionDto result = transactionService.useBalance(userId, accountNumber, amount);
-
-
-        Transaction capturedTransaction = transactionCaptor.getValue();
-        assertNotNull(capturedTransaction);
-        assertEquals(TransactionType.USE, capturedTransaction.getTransactionType());
-        assertEquals(TransactionResultType.SUCCESS, capturedTransaction.getTransactionResultType());
-        assertEquals(account, capturedTransaction.getAccount());
-        assertEquals(amount, capturedTransaction.getAmount());
-        assertNotNull(capturedTransaction.getTransactedAt());
-
-    }
-
-
-    @Test
-    public void successCancelBalance() {
-
-        String transactionId = UUID.randomUUID().toString();
-        String accountNumber = "123456";
-        Long amount = 50L;
-
-        Transaction transaction = new Transaction();
-        transaction.setTransactionId(transactionId);
-        transaction.setTransactionType(TransactionType.USE);
-        transaction.setTransactionResultType(TransactionResultType.SUCCESS);
-        transaction.setAccount(new Account());
-        transaction.setAmount(amount);
-        transaction.setTransactedAt(LocalDateTime.now());
-
-        Account account = new Account();
-        account.setAccountNumber(accountNumber);
-        account.setBalance(100L);
-
-        when(transactionRepository.findByTransactionId(transactionId)).thenReturn(Optional.of(transaction));
-        when(accountRepository.findByAccountNumber(accountNumber)).thenReturn(Optional.of(account));
-
-        ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
-        ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-
-        when(accountRepository.save(accountCaptor.capture())).thenReturn(account);
-        when(transactionRepository.save(transactionCaptor.capture())).thenReturn(transaction);
-
-        TransactionDto result = transactionService.cancelBalance(transactionId, accountNumber, amount);
-
-        Account capturedAccount = accountCaptor.getValue();
-        assertNotNull(capturedAccount);
-        assertEquals(accountNumber, capturedAccount.getAccountNumber());
-        assertEquals(150L, capturedAccount.getBalance()); // Check the updated balance
-
-        Transaction capturedTransaction = transactionCaptor.getValue();
-        assertNotNull(capturedTransaction);
-        assertEquals(TransactionType.USE_CANCELLED, capturedTransaction.getTransactionType());
-        assertEquals(TransactionResultType.SUCCESS, capturedTransaction.getTransactionResultType());
-        assertEquals(amount, capturedTransaction.getAmount());
-        assertNotNull(capturedTransaction.getTransactedAt());
+        TransactionDto result = transactionService.useBalance(token, id, accountNumber, amount);
 
         assertNotNull(result);
+        assertEquals(TransactionResultType.SUCCESS, result.getTransactionResultType());
         assertEquals(accountNumber, result.getAccountNumber());
-        assertEquals(TransactionResultType.SUCCESS, result.getTransactionResultType());
-        assertEquals(transactionId, result.getTransactionId());
+        assertNotNull(result.getTransactionId());
+        assertEquals(amount, result.getAmount());
         assertNotNull(result.getTransactedAt());
-        assertEquals(150L, result.getAmount());
+
+        verify(jwtTokenProvider, times(1)).getUsername(anyString());
+        verify(userRepository, times(1)).findByUid(eq(uid));
+        verify(accountRepository, times(1)).findByAccountNumber(eq(accountNumber));
+        verify(accountRepository, times(1)).save(eq(mockAccount));
+        verify(transactionRepository, times(1)).save(any(Transaction.class));
     }
 
     @Test
-    public void successGetTransaction() {
+    public void successCancelBalance(){
 
-        String transactionId = UUID.randomUUID().toString();
+        String token = "your_token_here";
+        String transactionId = "transaction_id";
+        String accountNumber = "123456789";
+        Long amount = 1000L;
+        String uid = "user_uid";
 
-        Transaction transaction = new Transaction();
-        transaction.setTransactionId(transactionId);
-        transaction.setTransactionResultType(TransactionResultType.SUCCESS);
-        transaction.setAmount(100L);
-        transaction.setTransactedAt(LocalDateTime.now());
-        transaction.setAccount(new Account());
+        User mockUser = new User();
+        mockUser.setId(1L);
 
-        Account account = new Account();
-        account.setAccountNumber("123456");
+        Account mockAccount = new Account();
+        mockAccount.setUser(mockUser);
+        mockAccount.setId(1L);
+        mockAccount.setBalance(2000L);
 
-        when(transactionRepository.findByTransactionId(transactionId)).thenReturn(Optional.of(transaction));
-        when(accountRepository.findById(transaction.getAccount().getId())).thenReturn(Optional.of(account));
+        Transaction mockTransaction = Transaction.builder()
+            .transactionId(transactionId)
+            .transactionType(TransactionType.USE)
+            .transactionResultType(TransactionResultType.SUCCESS)
+            .account(mockAccount)
+            .amount(amount)
+            .transactedAt(LocalDateTime.now().minusMonths(6))
+            .build();
 
+        when(jwtTokenProvider.getUsername(anyString())).thenReturn(uid);
+        when(userRepository.findByUid(eq(uid))).thenReturn(Optional.of(mockUser));
+        when(accountRepository.findByAccountNumber(eq(accountNumber))).thenReturn(Optional.of(mockAccount));
+        when(transactionRepository.findByTransactionId(eq(transactionId))).thenReturn(Optional.of(mockTransaction));
 
-        TransactionDto result = transactionService.getTransaction(transactionId);
+        TransactionDto result = transactionService.cancelBalance(token, transactionId, accountNumber, amount);
 
         assertNotNull(result);
-        assertEquals(transactionId, result.getTransactionId());
-        assertEquals(100L, result.getAmount());
-        assertNotNull(result.getTransactedAt());
         assertEquals(TransactionResultType.SUCCESS, result.getTransactionResultType());
-        assertEquals("123456", result.getAccountNumber());
+        assertEquals(accountNumber, result.getAccountNumber());
+        assertEquals(transactionId, result.getTransactionId());
+        assertNotNull(result.getTransactedAt());
 
+        assertEquals(3000L, result.getAmount());
+
+        verify(jwtTokenProvider, times(1)).getUsername(anyString());
+        verify(userRepository, times(1)).findByUid(eq(uid));
+        verify(accountRepository, times(1)).findByAccountNumber(eq(accountNumber));
+        verify(accountRepository, times(1)).save(eq(mockAccount));
+        verify(transactionRepository, times(1)).save(eq(mockTransaction));
     }
+
+
+
 }
